@@ -19,74 +19,79 @@ function Lexer(text){
 //[0-9]{2}-fe0f-20e3 numbers
 //[a-z0-9]{4,5}-fe0f (fe0f things)
 //1f1[ef]{1}[a-f0-9]{1}-1f1[ef]{1}[a-f0-9]{1} (flags)
-//1f432-1f40a (odd one)
 //[a-f0-9]{5}(-200d-[a-f0-9]{4,5}(-fe0f)?)+ (group ones)
 
-//I am so skeptical of all of this
-function strToAry(word){
-  var array = word.split("-");
-  for(var i=0; i<array.length; i++){
-    var str = array[i];
-    var j=1;
-    var found = false;
-    if(dict[str]){
-      return array;
+function strToAry(word)
+{
+  var wdAry = [];
+  //regex to detect irregular code points
+  var numReg = /[0-9]{2}-fe0f-20e3/g;
+  var numMatches = [];
+  for(var i=0; numMatches[i]=numReg.exec(word); i++){}
+
+  var fe0fReg = /[a-z0-9]{4,5}-fe0f/g;
+  var fe0fMatches = [];
+  for(var i=0; fe0fMatches[i]=fe0fReg.exec(word); i++){}
+
+  var flagReg = /1f1[ef]{1}[a-f0-9]{1}-1f1[ef]{1}[a-f0-9]{1}/g;
+  var flagMatches = [];
+  for(var i=0; flagMatches[i]=flagReg.exec(word); i++){}
+
+  var groupEReg = /[a-f0-9]{5}(-200d-[a-f0-9]{4,5}(-fe0f)?)+/g;
+  var groupMatches = [];
+  for(var i=0; groupMatches[i]=groupEReg.exec(word); i++){}
+
+  var regex = false;
+  if(numMatches[0]||fe0fMatches[0]||flagMatches[0]||groupMatches[0]){
+    regex = true;
+  }
+
+  if(!regex)
+    return word.split("-");
+
+  for(var i=0, num=0, fe0f=0, flag=0, group=0, array=0, len=word.length; i<len; ){
+    var result = null;
+    if(numMatches[num] && numMatches[num].index == i){
+      addTroubleEmojis(numMatches, num);
+    } else if(fe0fMatches[fe0f] && fe0fMatches[fe0f].index === i) {
+      addTroubleEmojis(fe0fMatches, fe0f);
+    } else if(flagMatches[flag] && flagMatches[flag].index === i) {
+      addTroubleEmojis(flagMatches, flag);
+    } else if(groupMatches[group] && groupMatches[group].index === i) {
+      addTroubleEmojis(groupMatches, group);
     } else {
-      while(((i+j)<array.length)&&(!dict[str])){
-        str = str + "-" + array[i+j];
-        j++;
-        if(dict[str]){//find soonest match
-          found = true;
-          break;
-        }
-      }
-    }
-
-    if(found){
-      found = false;
-      array[i] = combine(i, j, array);
-    } else { //walk back to find match
-      rearrange(i-1, i, array);
+      result = findWholeEmoji(i, word);
+      i = result.i;
+      wdAry[array] = result.emoji;
+      array++;
     }
   }
-  return array;
-}
+  return wdAry;
 
-function combine(i, j, array){
-  var subAry = array.slice(i, i+j);
-  var joined = subAry.join("-");
-  array[i] = joined;
-  array.splice(i+1, (j-i));
-
-  return array;
-}
-
-function rearrange(prev, current, array){
-  var i = prev;
-  str = array[prev];
-  var found = false;
-  if(dict[str])
+  function findWholeEmoji(start, word)
   {
-    found = true;
-  } else {
-    while((i < array.length)&&(!dict[str])){
-      str = str + "-" + array[i+1];
-      i++;
-      if(dict[str]){ //found match
-        found = true;
+    var emoji = "";
+    for(var i=start, len=word.length; i<len; i++){
+      if(word.charAt(i) === "-"){
         break;
+      } else {
+        emoji += word.charAt(i);
       }
     }
+    if(i < word.length)
+      i++; //skip next dash
+
+    return {"emoji":emoji, "i":i};
   }
 
-  if(found){
-    found = false;
-    array[prev] = str;
-    array.splice(current, i-current);
+  function addTroubleEmojis(matches, counter){
+    wdAry[array] = matches[counter][0];
+    i = i + wdAry[array].length;
+    if(i<len) //skip next dash
+      i++;
+    array++;
+    counter++;
   }
-  //who even knows if it's not found (probably should throw an error here)
-
-  return array;
 }
 
 function eggplant()
