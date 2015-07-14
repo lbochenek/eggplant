@@ -1,18 +1,134 @@
 //http://scratch-lang.notimetoplay.org/index.html
 
 window.onload = function() {
-  document.querySelector("#process").addEventListener("click", eggplant);
+  document.querySelector("#process").addEventListener("click", process);
+  document.querySelector("#codePoint").addEventListener("click", cp);
 };
+
+function cp(){
+  console.log("entered: "+getText()+" cp: "+toCodePoint(getText()));
+}
+
+function process(){
+  var egg = new Eggplant();
+  var PrintingWords = {
+    "1f4e0": function(egg){ //print 📠
+      if(egg.stack.length < 1)
+        throw "Not enough items on stack";
+      console.log(egg.stack.pop());
+    },
+    "1f4e0-1f4d1": function(egg){ //print stack 📠📑
+      console.log(egg.stack);
+    }
+  }
+
+  var MathWords = {
+    "2795": function(egg){ //addition ➕
+      if(egg.stack.length < 2)
+        throw "Not enough items on stack";
+      var op1 = egg.stack.pop();
+      var op2 = egg.stack.pop();
+      egg.stack.push(op1 + op2);
+    },
+    "2796": function(egg){ //subtraction ➖
+      if(egg.stack.length < 2)
+        throw "Not enough items on stack";
+      var op1 = egg.stack.pop();
+      var op2 = egg.stack.pop();
+      egg.stack.push(op2-op1);
+    },
+    "2797": function(egg){ //division ➗
+      if(egg.stack.length < 2)
+        throw "Not enough items on stack";
+      var op1 = egg.stack.pop();
+      var op2 = egg.stack.pop();
+      egg.stack.push(op2/op1);
+    },
+    "2716-fe0f": function(egg){ //multiplication ✖️
+      if(egg.stack.length < 2)
+        throw "Not enough items on stack";
+      var op1 = egg.stack.pop();
+      var op2 = egg.stack.pop();
+      egg.stack.push(op1*op2);
+    },
+    "2714-fe0f": function(egg){ //square root ✔️
+      if(egg.stack.length < 1)
+        throw "Not enough items on stack";
+      var op1 = egg.stack.pop();
+      egg.stack.push(Math.sqrt(op1));
+    },
+    "2747-fe0f": function(egg){ //mod ❇️
+      if(egg.stack.length < 1)
+        throw "Not enough items on stack";
+      var op1 = egg.stack.pop();
+      var op2 = egg.stack.pop();
+      egg.stack.push(op2 % op1);
+    }
+  };
+
+  var StackWords = {
+    //dup: duplicate top of stack 🔂📑
+    "1f502-1f4d1": function(egg){
+      if(egg.stack.length < 1)
+        throw "Not enough items on stack";
+      var tos = egg.stack.pop();
+      egg.stack.push(tos);
+      egg.stack.push(tos);
+    },
+    //drop: throw away top of stack 📤📑
+    "1f4e4-1f4d1": function(egg){
+      if(egg.stack.length < 1)
+        throw "Not enough items on stack";
+      egg.stack.pop();
+    },
+    //swap: exchange positions of TOS and second item on stack 🔀📑
+    "1f500-1f4d1": function(egg){
+      if(egg.stack.length < 2)
+        throw "Not enough items on stack";
+      var tos = egg.stack.pop();
+      var _2os = egg.stack.pop();
+      egg.stack.push(tos);
+      egg.stack.push(_2os);
+    },
+    //over: copy 2OS on top of stack 🔂🔂📑
+    "1f502-1f502-1f4d1": function(egg){
+      if(egg.stack.length < 2)
+        throw "Not enough items on stack";
+      var tos = egg.stack.pop();
+      var _2os = egg.stack.pop();
+      egg.stack.push(_2os);
+      egg.stack.push(tos);
+      egg.stack.push(_2os);
+    },
+    //rot: bring the 3rd item on stack to top ⏫📑
+    "23eb-1f4d1": function(egg){
+      if(egg.stack.length < 3)
+        throw "Not enough items on stack";
+      var tos = egg.stack.pop();
+      var _2os = egg.stack.pop();
+      var _3os = egg.stack.pop();
+      egg.stack.push(_2os);
+      egg.stack.push(tos);
+      egg.stack.push(_3os);
+    }
+  };
+
+  egg.addWords(PrintingWords);
+  egg.addWords(MathWords);
+  egg.run(getText());
+}
 
 function Lexer(text){
   var words = text.split(/\s+/);
-  console.log(words);
+  // console.log(words);
   var next = 0;
   this.nextWord = function(){
     if(next >= words.length)
       return null;
-    words[next] = strToAry(toCodePoint(words[next]));
-    return words[next++];
+    words[next] = toCodePoint(words[next]);
+    var wd = words[next];
+    next++;
+    return wd;
   }
 }
 
@@ -52,13 +168,13 @@ function strToAry(word)
   for(var i=0, num=0, fe0f=0, flag=0, group=0, array=0, len=word.length; i<len; ){
     var result = null;
     if(numMatches[num] && numMatches[num].index == i){
-      addTroubleEmojis(numMatches, num);
+      num = addTroubleEmojis(numMatches, num);
     } else if(fe0fMatches[fe0f] && fe0fMatches[fe0f].index === i) {
-      addTroubleEmojis(fe0fMatches, fe0f);
+      fe0f = addTroubleEmojis(fe0fMatches, fe0f);
     } else if(flagMatches[flag] && flagMatches[flag].index === i) {
-      addTroubleEmojis(flagMatches, flag);
+      flag = addTroubleEmojis(flagMatches, flag);
     } else if(groupMatches[group] && groupMatches[group].index === i) {
-      addTroubleEmojis(groupMatches, group);
+      group = addTroubleEmojis(groupMatches, group);
     } else {
       result = findWholeEmoji(i, word);
       i = result.i;
@@ -91,20 +207,51 @@ function strToAry(word)
       i++;
     array++;
     counter++;
+    return counter;
   }
 }
 
-function eggplant()
+function Eggplant()
 {
-  var lexer = new Lexer(getText());
-
-  var word = "";
-  while((word = lexer.nextWord()) !== null)
-  {
-    console.log(word);
+  var dictionary = {};
+  this.stack = [];
+  this.addWords = function(new_dict){
+    for(var word in new_dict){
+      dictionary[word] = new_dict[word];
+    }
   }
 
-  // console.log(dict);
+  this.run = function (text){
+    var lexer = new Lexer(text);
+    var word;
+    var num_val;
+    while(word = lexer.nextWord()){
+      num_val = getNumber(word);
+      if(dictionary[word]){
+        dictionary[word](this);
+      } else if(num_val) {
+        this.stack.push(num_val);
+      } else {
+        throw "Unknown word";
+      }
+    }
+  }
+}
+
+function getNumber(word)
+{
+  var num = /[0-9]{2}-fe0f-20e3/g;
+  if(num.test(word)){
+    var nums = strToAry(word);
+    var str = "";
+    nums.forEach(function(number){
+      str += cpToN[number];
+    });
+  }
+  else
+    return null;
+
+  return Number(str);
 }
 
 //http://www.christinahsuholland.com/processing-emojis-in-javascript/
