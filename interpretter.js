@@ -153,20 +153,27 @@ function process(){
 
   var StringWords = {
     //✏️
-    "270f-fe0f": function(egg){
+    "270f-fe0f": function(egg, word){
       var collector = "";
       var done = false;
-      do{
-        var next_word= egg.lexer.nextWord();
-        if(next_word === null)
+      while(!done){
+        if(word === null)
           throw "Unexpected end of input";
-        if(next_word === "270f-fe0f"){
+        if(word.substr(-9, 9) === "270f-fe0f"){
+          var words = strToAry(word.substr(0, word.length-10));
+          words.forEach(function(wd){
+            collector += fromCodePoint(wd);
+          });
           done = true;
         } else {
-          collector += fromCodePoint(next_word);
+          var words = strToAry(word);
+          words.forEach(function(wd){
+            collector += fromCodePoint(wd);
+          });
           collector += " ";
+          word = egg.lexer.nextWord();
         }
-      } while(!done);
+      }
       egg.stack.push(collector);
     }
   }
@@ -293,6 +300,8 @@ function Eggplant()
         dictionary[word](this);
       } else if(num_val) {
         this.stack.push(num_val);
+      } else if(word.substr(0, 9) === "270f-fe0f"){ //beginning of quote
+        dictionary["270f-fe0f"](this, word.substr(10));
       } else {
         throw "Unknown word";
       }
