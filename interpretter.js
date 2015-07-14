@@ -10,6 +10,12 @@ function cp(){
 }
 
 function process(){
+
+  //http://stackoverflow.com/questions/1348178/a-better-way-to-splice-an-array-into-an-array-in-javascript
+  Array.prototype.spliceArray = function(index, n, array){
+    return Array.prototype.splice.apply(this, [index, n].concat(array));
+  }
+
   var egg = new Eggplant();
   var PrintingWords = {
     "1f4e0": function(egg){ //print 📠
@@ -113,8 +119,70 @@ function process(){
     }
   };
 
+  var VariableWords = {
+    //var 🍆
+    "1f346": function(egg){
+      var var_name = egg.lexer.nextWord();
+      if(var_name === null)
+        throw "Unexcepted end of input";
+      egg.define(var_name, makeVariable(egg));
+    },
+    //store: store value of 2OS into variable given by TOS. 🛄🍆
+    "1f6c4-1f346": function(egg){
+      if(egg.stack.length < 2)
+        throw "Not enough items on stack";
+      var reference = egg.stack.pop();
+      var new_value = egg.stack.pop();
+      reference.value = new_value;
+    },
+    //fetch: replace reference to variable on TOS with its value. 🛅🍆
+    "1f6c5-1f346": function(egg){
+      if(egg.stack.length < 1)
+        throw "Not enough items on stack";
+      var reference = egg.stack.pop();
+      egg.stack.push(reference.value);
+    }
+  };
+
+  var ConstantWords = {
+    //read next word from input and make it a constant with TOS 🐘🍆
+    "1f418-1f346": function(egg){
+      if(egg.stack.length < 1)
+        throw "Not enough items on stack";
+      var const_name = egg.lexer.nextWord();
+      if(const_name === null)
+        throw "Unexpected end of input";
+      var const_value = egg.stack.pop();
+      egg.define(const_name, makeConstant(const_value, egg));
+    }
+  };
+
+  var StringWords = {
+    //✏️
+    "270f-fe0f": function(egg){
+      var collector = "";
+      var done = false;
+      do{
+        var next_word= egg.lexer.nextWord();
+        if(next_word === null)
+          throw "Unexpected end of input";
+        if(next_word === "270f-fe0f"){
+          done = true;
+        } else {
+          collector += fromCodePoint(next_word);
+          collector += " ";
+        }
+      } while(!done);
+      egg.stack.push(collector);
+    }
+  }
+
   egg.addWords(PrintingWords);
   egg.addWords(MathWords);
+  egg.addWords(StackWords);
+  egg.addWords(VariableWords);
+  egg.addWords(ConstantWords);
+  egg.addWords(StringWords);
   egg.run(getText());
 }
 
@@ -122,10 +190,18 @@ function Lexer(text){
   var words = text.split(/\s+/);
   // console.log(words);
   var next = 0;
+  var onString = false;
   this.nextWord = function(){
     if(next >= words.length)
       return null;
-    words[next] = toCodePoint(words[next]);
+    if(!onString)
+      words[next] = toCodePoint(words[next]);
+    if(isString(words[next])){
+      words = seperate(words[next], words, next);
+      onString = true;
+    } else if(words[next] === "270f-fe0f"){
+      onString = false;
+    }
     var wd = words[next];
     next++;
     return wd;
@@ -137,8 +213,22 @@ function Lexer(text){
 //1f1[ef]{1}[a-f0-9]{1}-1f1[ef]{1}[a-f0-9]{1} (flags)
 //[a-f0-9]{5}(-200d-[a-f0-9]{4,5}(-fe0f)?)+ (group ones)
 
-function strToAry(word)
-{
+function isString(word){
+  if(/(270f-fe0f).*?\1/.test(word)){
+    return true;
+  } else {
+    return false;
+  }
+}
+
+function seperate(word, words, i){
+  var seperated = strToAry(word);
+  words.spliceArray(i, 1, seperated);
+
+  return words;
+}
+
+function strToAry(word){
   var wdAry = [];
   //regex to detect irregular code points
   var numReg = /[0-9]{2}-fe0f-20e3/g;
@@ -222,10 +312,10 @@ function Eggplant()
   }
 
   this.run = function (text){
-    var lexer = new Lexer(text);
+    this.lexer = new Lexer(text);
     var word;
     var num_val;
-    while(word = lexer.nextWord()){
+    while(word = this.lexer.nextWord()){
       num_val = getNumber(word);
       if(dictionary[word]){
         dictionary[word](this);
@@ -236,6 +326,19 @@ function Eggplant()
       }
     }
   }
+
+  this.define = function(word, code){
+    dictionary[word] = code;
+  }
+}
+
+function makeVariable(egg){
+  var me = {value: 0}
+  return function(){egg.stack.push(me);};
+}
+
+function makeConstant(value, egg){
+  return function() {egg.stack.push(value);};
 }
 
 function getNumber(word)
