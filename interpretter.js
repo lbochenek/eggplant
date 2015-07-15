@@ -307,6 +307,19 @@ function Eggplant()
       }
     }
   }
+
+  this.define = function(word, code){
+    dictionary[word] = code;
+  }
+}
+
+function makeVariable(egg){
+  var me = {value: 0};
+  return function(){egg.stack.push(me);};
+}
+
+function makeConstant(value, egg){
+  return function(){egg.stack.push(value);};
 }
 
 function getNumber(word)
