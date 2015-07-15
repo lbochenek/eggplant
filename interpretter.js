@@ -160,29 +160,15 @@ function process(){
   var StringWords = {
     //✏️
     "270f-fe0f": function(egg, word){
-      var collector = "";
-      var done = false;
-      while(!done){
-        if(word === null)
-          throw "Unexpected end of input";
-        if(word.substr(-9, 9) === "270f-fe0f"){
-          var words = strToAry(word.substr(0, word.length-10));
-          words.forEach(function(wd){
-            collector += fromCodePoint(wd);
-          });
-          done = true;
-        } else {
-          var words = strToAry(word);
-          words.forEach(function(wd){
-            collector += fromCodePoint(wd);
-          });
-          collector += " ";
-          word = egg.lexer.nextWord();
-        }
-      }
-      egg.stack.push(collector);
+      egg.stack.push(egg.lexer.nextCharsUpTo("270f-fe0f"));
     }
   }
+
+  var CommentWords = {
+    "1f4dd": function(egg){ //📝
+      var next_word = egg.lexer.nextCharsUpTo("\n");
+    }
+  };
 
   egg.addWords(PrintingWords);
   egg.addWords(MathWords);
@@ -190,35 +176,119 @@ function process(){
   egg.addWords(VariableWords);
   egg.addWords(ConstantWords);
   egg.addWords(StringWords);
+  egg.addWords(CommentWords);
   egg.run(getText());
 }
 
+function isWhitespace(char){
+  return (char == " ")||(char == "\t")||(char == "\n")||(char == "\v");
+}
+
 function Lexer(text){
-  var words = text.split(/\s+/);
-  // console.log(words);
-  var next = 0;
-  var onString = false;
+  var position = 0;
+  var charPos = 0;
+  textAry = arrayify(text);
+  console.log(textAry);
   this.nextWord = function(){
-    if(next >= words.length)
+    if(position >= textAry.length)
       return null;
-    if(!onString)
-      words[next] = toCodePoint(words[next]);
-    if(isString(words[next])){
-      words = seperate(words[next], words, next);
-      onString = true;
-    } else if(words[next] === "270f-fe0f"){
-      onString = false;
+    if(charPos !== 0){ //in middle of word
+      var retVal = textAry[i].substr(charPos, textAry[1].length);
+      charPos = 0;
+      position++;
+      return retVal;
     }
-    var wd = words[next];
-    next++;
-    return wd;
+    while(isWhitespace(textAry[position])){
+      position++;
+    }
+    if(position >= textAry.length)
+      return null;
+
+    var retVal = textAry[position];
+    position++;
+    return retVal;
+  }
+
+  this.nextCharsUpTo = function(char){
+    if(position >= textAry.length)
+      return null;
+
+    var collector = "";
+    var found = false;
+    for(var i=position, len=textAry.length; i<len; i++){
+      var res = contains();
+      if(res.found){
+        if(res.seperated){
+          var length = index(res.ind, res.seperated);
+          collector += textAry[i].substr(charPos, charPos+length);
+          charPos = charPos + length + 1;
+        } else {
+          collector += textAry[i];
+        }
+        position = i + 1;
+        found = true;
+        break;
+      } else {
+        collector += textAry[i];
+      }
+    }
+
+    if(found === false){
+      throw "Unexcepted end of input";
+    }
+
+    return collector;
+
+    function contains(){
+      var found = false;
+      if(/[-]/.test(textAry[i])){
+        var seperated = strToAry(textAry[i]);
+        var ind = seperated.indexOf(char);
+        if(ind > -1){
+          found = true;
+          return {"found": found, "seperated": seperated, "ind": ind}
+        }
+      } else if(textAry[i] === char){
+        found = true;
+      }
+
+      return {"found": found};
+    }
+
+    function index(ind, seperated){
+      var len = 0;
+      for(var i=0; i<=ind; i++){
+        len+=seperated.length;
+        if(i !== ind){
+          len++; //account for dash between emojis
+        }
+      }
+      return len;
+    }
   }
 }
 
-//[0-9]{2}-fe0f-20e3 numbers
-//[a-z0-9]{4,5}-fe0f (fe0f things)
-//1f1[ef]{1}[a-f0-9]{1}-1f1[ef]{1}[a-f0-9]{1} (flags)
-//[a-f0-9]{5}(-200d-[a-f0-9]{4,5}(-fe0f)?)+ (group ones)
+function arrayify(text){
+  var array = [];
+  var collector = "";
+  for(var i=0, j=0, len=text.length; i<len; i++){
+    if(isWhitespace(text.charAt(i))){
+      if(collector !== ""){
+        array[j] = toCodePoint(collector);
+        j++;
+        collector = "";
+      }
+      array[j] = text.charAt(i);
+      j++;
+    } else {
+      collector += text.charAt(i);
+    }
+  }
+  if(collector !== ""){
+    array[j] = toCodePoint(collector);
+  }
+  return array;
+}
 
 function isString(word){
   if(/(270f-fe0f).*?\1/.test(word)){
@@ -322,7 +392,7 @@ function Eggplant()
     this.lexer = new Lexer(text);
     var word;
     var num_val;
-    while(word = this.lexer.nextWord()){
+    while((word = this.lexer.nextWord()) !== null){
       num_val = getNumber(word);
       if(dictionary[word]){
         dictionary[word](this);
@@ -410,7 +480,7 @@ function fromCodePoint(codepoint)
 
 function getText()
 {
-  return document.querySelector("#language").value;
+  return document.querySelector("#language").value+"\n";
 }
 
 function print()
