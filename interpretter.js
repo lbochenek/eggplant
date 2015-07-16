@@ -21,7 +21,20 @@ function process(){
     "1f4e0": function(egg){ //print 📠
       if(egg.stack.length < 1)
         throw "Not enough items on stack";
-      console.log(egg.stack.pop());
+      var strToPrint = egg.stack.pop();
+      var printAry = arrayify(strToPrint, true);
+      var str = "";
+      printAry.forEach(function(wd){
+        if(!isWhitespace(wd)){
+          var seperated = strToAry(wd);
+          seperated.forEach(function(emoji){
+            str += fromCodePoint(emoji);
+          });
+        } else {
+          str += wd;
+        }
+      });
+      console.log(str);
     },
     "1f4e0-1f4d1": function(egg){ //print stack 📠📑
       console.log(egg.stack);
@@ -32,43 +45,49 @@ function process(){
     "2795": function(egg){ //addition ➕
       if(egg.stack.length < 2)
         throw "Not enough items on stack";
-      var op1 = egg.stack.pop();
-      var op2 = egg.stack.pop();
-      egg.stack.push(op1 + op2);
+      var op1 = getNumber(egg.stack.pop());
+      var op2 = getNumber(egg.stack.pop());
+      var res = op1 + op2;
+      egg.stack.push(getCPNum(res));
     },
     "2796": function(egg){ //subtraction ➖
       if(egg.stack.length < 2)
         throw "Not enough items on stack";
-      var op1 = egg.stack.pop();
-      var op2 = egg.stack.pop();
-      egg.stack.push(op2-op1);
+      var op1 = getNumber(egg.stack.pop());
+      var op2 = getNumber(egg.stack.pop());
+      var res = op2-op1;
+      egg.stack.push(getCPNum(res));
     },
     "2797": function(egg){ //division ➗
       if(egg.stack.length < 2)
         throw "Not enough items on stack";
-      var op1 = egg.stack.pop();
-      var op2 = egg.stack.pop();
-      egg.stack.push(op2/op1);
+      var op1 = getNumber(egg.stack.pop());
+      var op2 = getNumber(egg.stack.pop());
+      var res = op2/op1;
+      egg.stack.push(getCPNum(res));
     },
     "2716-fe0f": function(egg){ //multiplication ✖️
       if(egg.stack.length < 2)
         throw "Not enough items on stack";
-      var op1 = egg.stack.pop();
-      var op2 = egg.stack.pop();
-      egg.stack.push(op1*op2);
+      var op1 = getNumber(egg.stack.pop());
+      var op2 = getNumber(egg.stack.pop());
+      var res = op1*op2;
+      egg.stack.push(getCPNum(res));
     },
     "2714-fe0f": function(egg){ //square root ✔️
       if(egg.stack.length < 1)
         throw "Not enough items on stack";
-      var op1 = egg.stack.pop();
-      egg.stack.push(Math.sqrt(op1));
+      var op1 = getNumber(egg.stack.pop());
+      var res = Math.sqrt(op1);
+      egg.stack.push(getCPNum(res));
     },
     "2747-fe0f": function(egg){ //mod ❇️
       if(egg.stack.length < 1)
         throw "Not enough items on stack";
-      var op1 = egg.stack.pop();
-      var op2 = egg.stack.pop();
-      egg.stack.push(op2 % op1);
+      var op1 = getNumber(egg.stack.pop());
+      var op2 = getNumber(egg.stack.pop());
+      var res = op2 % op1;
+      egg.stack.push(getCPNum(res));
     }
   };
 
@@ -159,8 +178,9 @@ function process(){
 
   var StringWords = {
     //✏️
-    "270f-fe0f": function(egg, word){
-      egg.stack.push(egg.lexer.nextCharsUpTo("270f-fe0f"));
+    "270f-fe0f": function(egg){
+      var string = egg.lexer.nextCharsUpTo("270f-fe0f");
+      egg.stack.push(string.substr(1, string.length));
     }
   }
 
@@ -170,6 +190,42 @@ function process(){
     }
   };
 
+  function makeWord(code){
+    return function(egg){
+      var code_pointer = 0;
+      while(code_pointer < code.length){
+        egg.interpret(code[code_pointer]);
+        code_pointer++;
+      }
+    };
+  }
+
+  var CompilingWords = {
+    //♻️ DEF
+    "267b-fe0f": function(egg){
+      var new_word = egg.lexer.nextWord();
+      if(new_word == null)
+        throw "Unexpected end of input";
+
+      egg.latest = new_word;
+      egg.startCompiling();
+    },
+    //🚫 END
+    "1f6ab": function(egg){
+      var new_code = egg.stack.slice(0); //clone compile_buffer
+      egg.stack.length = 0; //clear compile buffer
+      egg.define(egg.latest, makeWord(new_code));
+      egg.stopCompiling();
+    }
+  }
+
+  VariableWords["1f346"].immediate = true; //🍆 VAR
+  ConstantWords["1f418-1f346"].immediate = true; //🐘🍆 CONST
+  StringWords["270f-fe0f"].immediate = true; //✏️ String
+  CommentWords["1f4dd"].immediate = true; //📝 comment
+  CompilingWords["267b-fe0f"].immediate = true; //♻️ DEF
+  CompilingWords["1f6ab"].immediate = true; //🚫 END
+
   egg.addWords(PrintingWords);
   egg.addWords(MathWords);
   egg.addWords(StackWords);
@@ -177,6 +233,7 @@ function process(){
   egg.addWords(ConstantWords);
   egg.addWords(StringWords);
   egg.addWords(CommentWords);
+  egg.addWords(CompilingWords);
   egg.run(getText());
 }
 
@@ -187,13 +244,12 @@ function isWhitespace(char){
 function Lexer(text){
   var position = 0;
   var charPos = 0;
-  textAry = arrayify(text);
-  console.log(textAry);
+  textAry = arrayify(text, false);
   this.nextWord = function(){
     if(position >= textAry.length)
       return null;
     if(charPos !== 0){ //in middle of word
-      var retVal = textAry[i].substr(charPos, textAry[1].length);
+      var retVal = textAry[position].substr(charPos, textAry[1].length);
       charPos = 0;
       position++;
       return retVal;
@@ -220,11 +276,12 @@ function Lexer(text){
       if(res.found){
         if(res.seperated){
           var length = index(res.ind, res.seperated);
-          collector += textAry[i].substr(charPos, charPos+length);
-          charPos = charPos + length + 1;
-        } else {
-          collector += textAry[i];
+          collector += textAry[i].substr(charPos, charPos+length-1);
+          charPos = (charPos + length + res.seperated[res.ind].length)%textAry[i].length;
         }
+        //  else {
+        //   collector += textAry[i];
+        // }
         position = i + 1;
         found = true;
         break;
@@ -257,8 +314,8 @@ function Lexer(text){
 
     function index(ind, seperated){
       var len = 0;
-      for(var i=0; i<=ind; i++){
-        len+=seperated.length;
+      for(var i=0; i<ind; i++){
+        len+=seperated[i].length;
         if(i !== ind){
           len++; //account for dash between emojis
         }
@@ -268,13 +325,18 @@ function Lexer(text){
   }
 }
 
-function arrayify(text){
+function arrayify(text, inCodePoint){
   var array = [];
   var collector = "";
+  text = text.toString();
   for(var i=0, j=0, len=text.length; i<len; i++){
     if(isWhitespace(text.charAt(i))){
       if(collector !== ""){
-        array[j] = toCodePoint(collector);
+        if(!inCodePoint){
+          array[j] = toCodePoint(collector);
+        } else {
+          array[j] = collector;
+        }
         j++;
         collector = "";
       }
@@ -285,7 +347,11 @@ function arrayify(text){
     }
   }
   if(collector !== ""){
-    array[j] = toCodePoint(collector);
+    if(!inCodePoint){
+      array[j] = toCodePoint(collector);
+    } else {
+      array[j] = collector;
+    }
   }
   return array;
 }
@@ -381,34 +447,70 @@ function strToAry(word){
 function Eggplant()
 {
   var dictionary = {};
-  this.stack = [];
+  var data_stack = [];
+  var compile_buffer = [];
+
+  this.stack = data_stack;
+  this.immediate = false;
   this.addWords = function(new_dict){
     for(var word in new_dict){
       dictionary[word] = new_dict[word];
     }
   }
 
+  this.compile = function(word){
+    var num_val = isNumber(word);
+    if(dictionary[word]){
+      this.immediate = dictionary[word].immediate;
+      return dictionary[word];
+    } else if(num_val){
+      return word;
+    } else {
+      throw "Unknown word";
+    }
+  }
+
+  this.startCompiling = function(){
+    this.stack = compile_buffer;
+  };
+
+  this.stopCompiling = function(){
+    this.stack = data_stack;
+  };
+
+  this.isCompiling = function(){
+    return this.stack == compile_buffer;
+  };
+
   this.run = function (text){
     this.lexer = new Lexer(text);
     var word;
-    var num_val;
     while((word = this.lexer.nextWord()) !== null){
-      num_val = getNumber(word);
-      if(dictionary[word]){
-        dictionary[word](this);
-      } else if(num_val) {
-        this.stack.push(num_val);
-      } else if(word.substr(0, 9) === "270f-fe0f"){ //beginning of quote
-        dictionary["270f-fe0f"](this, word.substr(10));
+      word = this.compile(word);
+      if(this.immediate){
+        this.interpret(word);
+        this.immediate = false;
+      } else if (this.isCompiling()){
+        this.stack.push(word);
       } else {
-        throw "Unknown word";
+        this.interpret(word);
       }
+    }
+  }
+
+  this.interpret = function(word){
+    if(typeof (word) == "function"){
+      word(this);
+    } else {
+      this.stack.push(word);
     }
   }
 
   this.define = function(word, code){
     dictionary[word] = code;
   }
+
+  this.lookup = function(word){return dictionary[word];};
 }
 
 function makeVariable(egg){
@@ -418,6 +520,10 @@ function makeVariable(egg){
 
 function makeConstant(value, egg){
   return function(){egg.stack.push(value);};
+}
+
+function isNumber(word){
+  return /[0-9]{2}-fe0f-20e3/g.test(word);
 }
 
 function getNumber(word)
@@ -434,6 +540,17 @@ function getNumber(word)
     return null;
 
   return Number(str);
+}
+
+function getCPNum(num){
+  var numStr = num.toString();
+  var str = "";
+  for(var i=0, len=numStr.length; i<len; i++){
+    str+=nToCP[numStr.charAt(i)];
+    if(i<numStr.length-1)
+      str+="-";
+  }
+  return str;
 }
 
 //http://www.christinahsuholland.com/processing-emojis-in-javascript/
@@ -481,19 +598,6 @@ function fromCodePoint(codepoint)
 function getText()
 {
   return document.querySelector("#language").value+"\n";
-}
-
-function print()
-{
-  var str = "var dict = {\n";
-  for(var property in dict){
-    if(dict.hasOwnProperty(property)){
-      str = str + "\t" + property + ": " + dict[property] + ",\n";
-    }
-  }
-  str = str.substr(0, str.length-2); //get rid of last comma;
-  str = str + "\n};";
-  console.log(str);
 }
 
 
