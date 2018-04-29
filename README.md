@@ -32,7 +32,7 @@ A stack-oriented interpretted language created using Felix Plesoianu's "Make You
 * ✏️: declare string
   * ex: `✏️ hello world✏️`
 
-##Functions
+## Functions
 * ♻️: declare function
 * 🚫: declare end of function
 * ex:
@@ -41,7 +41,7 @@ A stack-oriented interpretted language created using Felix Plesoianu's "Make You
     🚫`
   * defines a function 🍉, which prints the string `🌍`
   
-##Arrays
+## Arrays
 * 🌜: beginning of array
 * 🌛: end of array
 * 📏: length of array
