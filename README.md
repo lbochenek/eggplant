@@ -36,22 +36,25 @@ A stack-oriented interpretted language created using Felix Plesoianu's "Make You
   * e.g. `5️⃣5️⃣ 1️⃣0️⃣ 9️⃣9️⃣ ⏫📑 📠 📠 📠` will print 55, 10, 99.
 
 ## Variables, Constants, Strings
-* 🍆`<variable>` (**Dim**) defines a variable named `<variable>` (`<variable>` is expected to be an emoji)
-  * e.g. `🍆😊` defines a variable named `😊`
-* 🛄🍆`<variable>` (**Store**) pops topmost value on the stack into `<variable>`
-* 🛅🍆`<variable>`(**Get**) gets value of `<variable>` and pushes it to the stack
+* 🍆` <variable>` (**Dim**) defines a variable named `<variable>` (`<variable>` is expected to be an emoji)
+  * e.g. `🍆 😊` defines a variable named `😊`
+* `<variable> `🛄🍆 (**Store**) pops topmost value on the stack into `<variable>`
+  * e.g. `1️⃣0️⃣ 😊 🛄🍆` sets 😊 to 10
+* `<variable> `🛅🍆 (**Get**) gets value of `<variable>` and pushes it to the stack
+  * e.g. `😊 🛅🍆` pushes the contents of 😊 to the stack
 * 🐘🍆 (**Constant**) defines a constant and pushes it to the stack
+  * e.g. `5️⃣5️⃣ 🐘🍆 😊` sets the constant 😊 to 55. 😊 can now be used to push the value 55 to the stack, e.g., `😊 📠` will output 55.
 * `✏️` (**String**) declares a string and pushes it to the stack
-  * e.g. `✏️ hello world✏️`
+  * e.g. `✏️ Hello World ✏️`
 
 ## Functions
 * ♻️ (**Function**) function declarator (must be followed by an emoji to name the function)
 * 🚫 (**End Function Block**) function block end
 * e.g.:
   * `♻️ 🍉 
-      ✏️ 🌍✏️ ✏️ 📠 
+      ✏️ Hello ✏️ 📠 
     🚫`
-  * defines a function 🍉, which prints the string `🌍`
+  * defines a function 🍉, which prints the string `Hello`
   
 ## Arrays
 * 🌜 (**Array Declarator**) defines the start of an array
